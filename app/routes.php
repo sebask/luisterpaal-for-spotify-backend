@@ -12,7 +12,6 @@
 */
 
 
-
 /*
 |--------------------------------------------------------------------------
 | Three endpoints to control the awesomeness
@@ -24,7 +23,7 @@ Route::get('/', function() // Serve the cache if it exists, otherwise get the al
 {
   if (Cache::has('albums'))
   {
-    return Cache::get('albums');
+    return Response::json(Cache::get('albums'));
   }
   else
   {
@@ -42,6 +41,12 @@ Route::get('/clear_cache', function() // Clear the cache manually :)
   Cache::forget('albums');
   Cache::forget('luisterpaal_id');
   return 'Cache quite cleared!';
+});
+
+Route::get('/match', function()
+{
+  similar_text('Awesome!', 'Awesome', $match_in_percentage);
+  exit($match_in_percentage > 90.0 ? 'true' : 'false');
 });
 
 
@@ -69,13 +74,30 @@ function get_luisterpaal_albums()
   }
 
   // Get all the spotify albums for the luisterpaal albums, forget the ones not available on spotify
-  foreach ($luisterpaal->xpath('/luisterpaal/albums/album') as $album) {
-    $spotify_result = get_spotify_results_for_album($album->find('title')->first()->text());
+  foreach($luisterpaal->xpath('/luisterpaal/albums/album') as $qp_album)
+  {
 
-    if($spotify_result != false)
+    $album = array();
+    $album['title'] = $qp_album->find('title')->first()->text();
+    $album['artist'] = $qp_album->find('artist')->first()->text();
+    $album['cover'] = $qp_album->find('image')->first()->text();
+    $album['tracks'] = array();
+
+    foreach($qp_album->find('tracks > track > title') as $track)
     {
-      $albums[] = $spotify_result;
+      $album['tracks'][] = $track->text();
     }
+
+    $spotify_result = get_spotify_results_for_album($album['title'], $album['artist']);
+    if($spotify_result != false && is_array($spotify_result))
+    {
+      $album = array_merge($album, $spotify_result);
+    } else {
+      $album['href'] = null;
+      $album['artist_href'] = null;
+    }
+
+    $albums[] = $album;
   }
 
   // Check if albums array has anything inside
@@ -85,7 +107,7 @@ function get_luisterpaal_albums()
   }
 
   // Cache albums forever
-  Cache::forever('albums', json_encode($albums));
+  Cache::forever('albums', $albums);
 
   // Remember the luisterpaal_id for at least a day
   Cache::put('luisterpaal_id', $luisterpaal->find('luisterpaal')->attr('id'), 1440);
@@ -93,50 +115,65 @@ function get_luisterpaal_albums()
   return $albums;
 }
 
-function get_spotify_results_for_album($album_title = null)
+function get_spotify_results_for_album($album_title = null, $artist_name = null)
 {
+  $album_match_percentage = 90.0;
+  $artist_match_percentage = 90.0;
+
   if(empty($album_title))
   {
     Log::warning('No album title provided for get_spotify_results_for_album()');
     return false;
   }
 
+  $spotify_query = trim(urlencode($album_title . ' ' . $artist_name));
+
   // Make the request to spotify
-  $spotify_query = file_get_contents('http://ws.spotify.com/search/1/album.json?q='.urlencode($album_title));
-  if($spotify_query == false)
+  $spotify_response = file_get_contents('http://ws.spotify.com/search/1/album.json?q='.$spotify_query);
+  if($spotify_response == false)
   {
     Log::warning('Could not connect to Spotify API for album: ' . $album_title);
     return false;
   }
 
   // Json decode the results
-  $spotify_result = json_decode($spotify_query);
-  if( ! $spotify_result OR ! isset($spotify_result->albums) OR count($spotify_result->albums) == 0)
+  $spotify_response_decoded = json_decode($spotify_response);
+  if( ! $spotify_response_decoded OR ! isset($spotify_response_decoded->albums) OR count($spotify_response_decoded->albums) == 0)
   {
     Log::notice('Spotify API did not return any results for album: ' . $album_title);
     return false;
   }
 
-  $first_album = $spotify_result->albums[0];
+  $matched_album = null;
 
-  $spotify_album = new stdClass();
-  $spotify_album->name = $first_album->name;
-  $spotify_album->href = $first_album->href;
-
-  // Return the album early if it doesn't even have an artist.
-  if(count($first_album->artists) < 1)
-  {
-    return $spotify_album;
+  // Find an album name with an at least 90% match of the one we're looking for
+  foreach($spotify_response_decoded->albums as $returned_album) {
+    similar_text($album_title, $returned_album->name, $match_in_percentage);
+    if($match_in_percentage > $album_match_percentage){
+      $matched_album = $returned_album;
+      break;
+    }
+    continue;
   }
 
-  if( isset($first_album->artists[0]->name) )
-  {
-    $spotify_album->artist_name = $first_album->artists[0]->name;
-  }
+  if(is_null($matched_album)) return false;
 
-  if( isset($first_album->artists[0]->href) )
+  $spotify_album = array();
+  $spotify_album['query'] = $spotify_query;
+  $spotify_album['href'] = $matched_album->href;
+  $spotify_album['artist_href'] = null;
+
+  // Find a matching artist's href
+  if(count($matched_album->artists) > 0)
   {
-    $spotify_album->artist_href = $first_album->artists[0]->href;
+    foreach($matched_album->artists as $artist) {
+      similar_text($artist_name, $artist->name, $match_in_percentage);
+      if($match_in_percentage > $artist_match_percentage && isset($artist->href)) {
+        $spotify_album['artist_href'] = $artist->href;
+        break;
+      }
+      continue;
+    }
   }
 
   return $spotify_album;
