@@ -43,15 +43,6 @@ Route::get('/clear_cache', function() // Clear the cache manually :)
   return 'Cache quite cleared!';
 });
 
-Route::get('/match', function()
-{
-  similar_text('Awesome!', 'Awesome', $match_in_percentage);
-  exit($match_in_percentage > 90.0 ? 'true' : 'false');
-});
-
-
-
-
 
 /*
 |--------------------------------------------------------------------------
@@ -159,7 +150,6 @@ function get_spotify_results_for_album($album_title = null, $artist_name = null)
   if(is_null($matched_album)) return false;
 
   $spotify_album = array();
-  $spotify_album['query'] = $spotify_query;
   $spotify_album['href'] = $matched_album->href;
   $spotify_album['artist_href'] = null;
 
