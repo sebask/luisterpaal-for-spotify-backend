@@ -27,6 +27,12 @@
 
 		Example: '0,30 * * * * wget -q http://luisterpaalapp.sebask.me/update'
 
+		Cron on Stratus:
+		| User: 'root',
+		| Command: '/usr/bin/wget -qO /dev/null http://luisterpaalapp.sebask.me/update',
+		| Description: 'Refreshing the Luisterpaal app backend!',
+		| When: Hourly
+		| Date Range: 'Run on any date'
 
 Cheers
 Sebastian
