@@ -71,7 +71,8 @@ function get_luisterpaal_albums()
     $album = array();
     $album['title'] = $qp_album->find('title')->first()->text();
     $album['artist'] = $qp_album->find('artist')->first()->text();
-    $album['cover'] = $qp_album->find('image')->first()->text();
+	$album['cover'] = basename($qp_album->find('image')->first()->text());    
+    $album['cover_url'] = $qp_album->find('image')->first()->text();
     $album['tracks'] = array();
 
     foreach($qp_album->find('tracks > track > title') as $track)
@@ -84,8 +85,8 @@ function get_luisterpaal_albums()
     {
       $album = array_merge($album, $spotify_result);
     } else {
-      $album['href'] = null;
-      $album['artist_href'] = null;
+      $album['album_uri'] = null;
+      $album['artist_uri'] = null;
     }
 
     $albums[] = $album;
@@ -150,8 +151,8 @@ function get_spotify_results_for_album($album_title = null, $artist_name = null)
   if(is_null($matched_album)) return false;
 
   $spotify_album = array();
-  $spotify_album['href'] = $matched_album->href;
-  $spotify_album['artist_href'] = null;
+  $spotify_album['album_uri'] = $matched_album->href;
+  $spotify_album['artist_uri'] = null;
 
   // Find a matching artist's href
   if(count($matched_album->artists) > 0)
@@ -159,7 +160,7 @@ function get_spotify_results_for_album($album_title = null, $artist_name = null)
     foreach($matched_album->artists as $artist) {
       similar_text($artist_name, $artist->name, $match_in_percentage);
       if($match_in_percentage > $artist_match_percentage && isset($artist->href)) {
-        $spotify_album['artist_href'] = $artist->href;
+        $spotify_album['artist_uri'] = $artist->href;
         break;
       }
       continue;
