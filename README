@@ -1,0 +1,32 @@
+/* --------------------------------------------------------------
+
+	Luisterpaal app for Spotify
+	http://luisterpaalapp.sebask.me/
+
+	Copyright 2013, Sebastiaan Kooijman/Jeroen Bos
+	http://sebask.me/ and some love to http://brothersmedia.nl/
+
+	Created on June 3rd 2013
+	Edited on June 10th 2013
+
+-------------------------------------------------------------- */
+
+
+	-	Deploy to production without 'LESS', 'README', 'database' and that sort of things.
+
+	-	Run the Composer (make sure Composer is installed globally/per-site before doing so!).
+
+	-	While running on production, make sure you use production settings and point both
+		'DocumentRoot' and 'Directory' to the 'public' Laravel folder.
+
+	-	All folders inside 'app/storage/*' should be writable (777).
+
+	-	Make sure .htaccess is present (and thus renamed correctly).
+
+	- 	Setup a cronjob for 'http://luisterpaalapp.sebask.me/update'.
+
+		Example: '0,30 * * * * wget -q http://luisterpaalapp.sebask.me/update'
+
+
+Cheers
+Sebastian
