@@ -4,7 +4,8 @@
     "keywords": ["framework", "laravel"],
 	"require": {
 		"laravel/framework": "4.0.*",
-		"querypath/querypath": "3.*@dev"
+		"querypath/querypath": "3.*@dev",
+		"ext-mcrypt": "*"
 	},
 	"autoload": {
 		"classmap": [
